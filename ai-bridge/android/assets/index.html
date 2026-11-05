@@ -1,0 +1,66 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>Sonic 文字桥</title>
+<style>
+:root{--bg:#f8fafc;--ink:#0f172a;--muted:#475569;--line:#cbd5e1;--blue:#1d4ed8;--error:#b91c1c}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/24px Manrope,"Microsoft YaHei",sans-serif}main{max-width:720px;margin:auto;padding:24px 16px 48px}h1{font-size:30px;line-height:36px;font-weight:600;margin:8px 0 16px}h2{font-size:20px;line-height:28px;margin:24px 0 16px}p{color:var(--muted);margin:8px 0 16px;overflow-wrap:anywhere}nav{display:flex;gap:8px;margin:24px 0}button{font:inherit;font-weight:600;min-height:48px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);cursor:pointer}button:active{background:#dbeafe}button.primary,nav button[aria-selected=true]{background:var(--blue);border-color:var(--blue);color:white}button:disabled{opacity:.5}nav button{flex:1}label{display:block;font-weight:600;margin:16px 0 8px}input,textarea,select{font:inherit;width:100%;min-height:48px;padding:12px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);caret-color:var(--blue)}textarea{min-height:200px;resize:vertical}#custom{min-height:120px}small,.hint{font-size:14px;line-height:20px;color:var(--muted)}.meta{display:flex;justify-content:space-between;gap:16px;margin:8px 0 16px;font-size:14px;line-height:20px;color:var(--muted)}.actions{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}.actions button{flex:1}.error{color:var(--error)!important}#link{margin:0;min-height:24px;color:var(--ink)}#feedback{min-height:48px;color:var(--ink)}article{background:white;border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0}article pre,#result{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0}article header{font-size:14px;line-height:20px;color:var(--muted)}article pre{max-height:240px;overflow:auto}details{margin:16px 0}summary{min-height:48px;padding:12px 0;cursor:pointer}#devices button{display:block;width:100%;text-align:left;margin:8px 0}section[hidden]{display:none!important}:focus-visible{outline:3px solid var(--blue);outline-offset:4px}::selection{background:#dbeafe;color:var(--ink)}.check{font-weight:400}.check input{width:20px;min-height:20px;vertical-align:middle}#send{min-width:55%}.connected{color:#166534!important}
+</style><main>
+<h1>Sonic 文字桥</h1><p id="link" role="status" aria-live="polite">尚未连接板子</p>
+<nav aria-label="页面"><button data-tab="write" aria-selected="true">写作</button><button data-tab="history" aria-selected="false">历史</button><button data-tab="device" aria-selected="false">设备</button></nav>
+<section id="write">
+<label for="text">输入内容</label><textarea id="text" placeholder="输入、粘贴，或使用键盘语音输入" maxlength="4096"></textarea><div class="meta"><span id="saved">草稿自动保存在手机</span><span id="bytes">0 / 4096 字节</span></div>
+<label for="mode">处理方式</label><select id="mode"><option value="raw">原文发送，不调用模型</option value="polish">润色表达</option><option value="summary">生成摘要</option><option value="todo">提取待办事项</option><option value="translate">翻译成英文</option><option value="custom">使用自定义指令</option></select>
+<p id="modeHint" class="hint">先用原文发送测试蓝牙和 USB，再尝试模型处理。</p>
+<div class="actions"><button id="save">保存到历史</button><button class="primary" id="send" disabled>发送到板子</button></div>
+<p id="feedback" role="status" aria-live="polite">请在“设备”页搜索并连接 Sonic-AI。</p>
+<div id="resultWrap" hidden><h2>处理结果</h2><pre id="result"></pre><button id="copyResult">复制结果</button></div>
+</section>
+<section id="history" hidden><h2>输入历史</h2><p class="hint">保存在此手机中，最多 100 条。卸载 App 会删除记录。</p><div id="historyList"></div></section>
+<section id="device" hidden>
+<h2>蓝牙连接</h2><p class="hint">连接时如有系统配对提示，请确认配对。首次使用需允许“附近设备”权限。</p><div class="actions"><button class="primary" id="scan">搜索板子</button><button id="disconnect" disabled>断开</button></div><div id="devices"></div>
+<p id="deviceStatus">连接后可查看 Wi-Fi 和模型状态。</p>
+<label for="pin">设备管理密码</label><input id="pin" type="password" autocomplete="off"><p class="hint">初始为 SonicC3-2026。修改后请保持与板子一致。</p>
+<button id="openWeb">打开板子配置网页</button><p class="hint">首次可连接热点 Sonic-AI，无需密码，再打开 http://192.168.4.1。也可直接使用下面的蓝牙配置，无需切换手机 Wi-Fi。</p>
+<details><summary>通过蓝牙配置 Wi-Fi</summary><label for="ssid">Wi-Fi 名称</label><input id="ssid" maxlength="32" autocomplete="off"><label for="wifiPassword">Wi-Fi 密码</label><input id="wifiPassword" type="password" autocomplete="new-password" placeholder="留空保留原密码"><label class="check"><input id="openWifi" type="checkbox"> 使用无密码网络</label><button id="saveWifi">保存 Wi-Fi 到板子</button></details>
+<details><summary>通过蓝牙配置模型</summary><label for="base">接口地址</label><input id="base" type="url" value="https://api.openai.com/v1"><p class="hint">支持基础地址、/v1 或完整 /chat/completions 地址。HTTP 仅用于可信局域网。</p><label for="token">API Token</label><input id="token" type="password" autocomplete="off" placeholder="留空保留板子现有 Token"><label for="model">模型名称</label><input id="model" maxlength="128" placeholder="填写服务商提供的模型 ID"><label for="maxTokens">输出 Token 上限</label><input id="maxTokens" type="number" min="64" max="2048" value="1024"><label for="tokenField">输出上限参数</label><select id="tokenField"><option>max_tokens</option><option>max_completion_tokens</option></select><label for="custom">自定义处理指令</label><textarea id="custom">请整理以下文字，保留原意，只返回整理后的内容。</textarea><button id="saveModel">保存模型配置到板子</button><p class="hint">API Token 不保存到手机历史，也不会从板子读回。</p></details>
+</section></main><script>
+const $=id=>document.getElementById(id),encoder=new TextEncoder(),native=window.Android;
+let state={draft:'',mode:'raw',pin:'SonicC3-2026',history:[]},ready=false,sending=false,waitingRid='',waitingId=0,staIP='',saveTimer=null;
+try{const loaded=JSON.parse(native.load());state={...state,...loaded};if(!Array.isArray(state.history))state.history=[];}catch{}
+function persist(){state.draft=$('text').value;state.mode=$('mode').value;state.pin=$('pin').value;try{native.save(JSON.stringify(state));$('saved').textContent='草稿已保存';}catch{$('saved').textContent='保存失败，请复制内容备份';}}
+window.persist=persist;
+function bytes(){const n=encoder.encode($('text').value).length;$('bytes').textContent=n+' / 4096 字节';$('bytes').className=n>4096?'error':'';}
+function feedback(text,error=false){$('feedback').textContent=text;$('feedback').className=error?'error':'';}
+function tab(name){for(const node of document.querySelectorAll('[data-tab]'))node.setAttribute('aria-selected',String(node.dataset.tab===name));for(const id of ['write','history','device'])$(id).hidden=id!==name;if(name==='history')renderHistory();}
+for(const button of document.querySelectorAll('[data-tab]'))button.onclick=()=>tab(button.dataset.tab);
+$('text').value=state.draft;$('mode').value=state.mode;$('pin').value=state.pin;bytes();
+$('text').oninput=()=>{bytes();$('saved').textContent='正在保存…';clearTimeout(saveTimer);saveTimer=setTimeout(persist,300);};$('mode').onchange=()=>{persist();$('modeHint').textContent=$('mode').value==='raw'?'原文直接通过板子转发到电脑。':'由板子联网调用模型，处理完成后自动发送到电脑。';};$('pin').onchange=persist;
+function record(status='saved',rid=''){const text=$('text').value;if(!text.trim()){feedback('请先输入文字。',true);return null;}const item={rid:rid||Date.now().toString(36)+Math.random().toString(36).slice(2),text,mode:$('mode').value,time:Date.now(),status};state.history.unshift(item);state.history=state.history.slice(0,100);persist();return item;}
+function updateHistory(id,status,result){const item=state.history.find(x=>x.jobId===id)||(waitingRid?state.history.find(x=>x.rid===waitingRid):null);if(item){item.status=status;if(result)item.result=result;persist();}}
+function renderHistory(){const list=$('historyList');list.replaceChildren();if(!state.history.length){const p=document.createElement('p');p.textContent='还没有记录。输入文字后保存，或发送时自动保存。';list.append(p);return;}
+ const names={saved:'已保存',sending:'发送中',accepted:'设备已接收',processing:'模型处理中',ready:'等待电脑接收',delivered:'电脑已收到',error:'处理或发送失败',unknown:'发送结果待确认'};
+ for(const item of state.history){const article=document.createElement('article'),head=document.createElement('header'),text=document.createElement('pre'),actions=document.createElement('div');actions.className='actions';head.textContent=new Date(item.time).toLocaleString()+' · '+(names[item.status]||item.status);text.textContent=item.text;
+  const load=document.createElement('button');load.textContent='载入编辑';load.onclick=()=>{$('text').value=item.text;$('mode').value=item.mode;bytes();persist();tab('write');};const copy=document.createElement('button');copy.textContent=item.result?'复制处理结果':'复制原文';copy.onclick=()=>native.copy(item.result||item.text);actions.append(load,copy);article.append(head,text,actions);if(item.result){const summary=document.createElement('details'),title=document.createElement('summary'),result=document.createElement('pre');title.textContent='查看处理结果';result.textContent=item.result;summary.append(title,result);article.append(summary);}list.append(article);}
+}
+function sendObject(data){if(!ready){feedback('请先连接板子。',true);tab('device');return false;}native.send(JSON.stringify({...data,pin:$('pin').value}));return true;}
+$('save').onclick=()=>{if(record())feedback('已保存到手机输入历史。');};
+$('send').onclick=()=>{const text=$('text').value;if(!text.trim()||encoder.encode(text).length>4096){feedback('请输入文字，且不超过 4096 字节。',true);return;}if(sending)return;const item=record('sending');if(!item)return;waitingRid=item.rid;waitingId=0;
+ if(sendObject({op:'send',text,mode:$('mode').value,requestId:item.rid})){sending=true;$('send').disabled=true;feedback('正在通过蓝牙发送…');const rid=item.rid;setTimeout(()=>{if(waitingRid===rid&&sending){sending=false;$('send').disabled=!ready;item.status='unknown';persist();feedback('暂未确认接收结果，请检查设备状态，避免重复发送。',true);}},15000);}
+};
+$('scan').onclick=()=>native.scan();$('disconnect').onclick=()=>native.disconnect();
+$('openWeb').onclick=()=>native.openConfig(staIP||'192.168.4.1');
+$('saveWifi').onclick=()=>{if(sendObject({op:'config',config:{wifiSSID:$('ssid').value,wifiPassword:$('wifiPassword').value,clearWifiPassword:$('openWifi').checked}})){feedback('正在保存 Wi-Fi 配置…');$('wifiPassword').value='';}};
+$('saveModel').onclick=()=>{if(!$('model').value.trim()){feedback('请填写模型名称。',true);return;}if(sendObject({op:'config',config:{apiBase:$('base').value,apiToken:$('token').value,model:$('model').value,maxTokens:Number($('maxTokens').value),tokenField:$('tokenField').value,customPrompt:$('custom').value}})){feedback('正在保存模型配置…');$('token').value='';}};
+$('copyResult').onclick=()=>native.copy($('result').textContent);
+window.onSharedText=text=>{$('text').value=text;bytes();persist();tab('write');feedback('已载入分享的文字，可编辑后发送。');};
+window.onNative=raw=>{let event;try{event=JSON.parse(raw);}catch{return;}
+ if(event.kind==='link'){ready=event.ready;$('link').textContent=event.message;$('link').className=ready?'connected':'';$('send').disabled=!ready||sending;$('disconnect').disabled=!ready;if(!ready){sending=false;$('send').disabled=true;}}
+ else if(event.kind==='scanStart'){$('devices').replaceChildren();$('deviceStatus').textContent=event.message;}
+ else if(event.kind==='scanEnd')$('deviceStatus').textContent=event.message;
+ else if(event.kind==='device'){const button=document.createElement('button');button.textContent=event.name+' · '+event.address+' · '+event.rssi+' dBm';button.onclick=()=>native.connect(event.address);$('devices').append(button);}
+ else if(event.kind==='error'||event.type==='error'){sending=false;$('send').disabled=!ready;feedback(event.error||event.message||'设备报告错误。',true);$('deviceStatus').textContent=event.error||event.message;updateHistory(waitingId,'error');}
+ else if(event.kind==='copied')feedback(event.message);
+ else if(event.type==='status'){staIP=event.wifiConnected?event.staIP:'';$('deviceStatus').textContent=(event.wifiConnected?'Wi-Fi 已连接 · '+event.staIP:'Wi-Fi 未连接')+'\n'+(event.model?'模型：'+event.model:'模型尚未配置')+'\n电脑待收：'+event.pending+' 条';if(!$('ssid').value)$('ssid').value=event.wifiSSID||'';if(waitingId&&event.jobId===waitingId&&['error','delivered','ready','processing'].includes(event.phase)){updateHistory(waitingId,event.phase);if(event.phase==='error')feedback(event.error||'模型处理失败，请检查配置。',true);}}
+ else if(event.type==='accepted'){sending=false;$('send').disabled=!ready;waitingId=event.id;const item=state.history.find(x=>x.rid===event.requestId);if(item){item.jobId=event.id;item.status='accepted';persist();}feedback('设备已接收第 '+event.id+' 条，正在处理或等待电脑接收。');}
+ else if(event.type==='job'){const labels={processing:'模型正在处理，请稍候…',ready:'结果已准备好，等待电脑接收。',delivered:'电脑接收页面已收到。',error:event.error||'处理失败。'};feedback(labels[event.phase]||event.phase,event.phase==='error');updateHistory(event.id,event.phase);}
+ else if(event.type==='result'){$('result').textContent=event.text;$('resultWrap').hidden=false;updateHistory(event.id,'ready',event.text);}
+ else if(event.type==='saved'){feedback('配置已保存到板子。');$('deviceStatus').textContent='配置已保存，正在刷新状态。';}
+};
+</script></html>

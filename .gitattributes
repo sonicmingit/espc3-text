@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.py text eol=lf
+*.c text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.java text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.png binary
+*.bin binary
+*.apk binary
+*.exe binary

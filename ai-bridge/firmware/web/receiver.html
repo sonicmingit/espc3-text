@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sonic 文字桥 · 局域网接收</title>
+<style type="text/css">
+body{margin:0;background:#f8fafc;color:#0f172a;font:16px/24px "Microsoft YaHei",Tahoma,sans-serif}#page{width:90%;max-width:840px;margin:24px auto;padding-bottom:32px}h1{font-size:30px;line-height:36px;margin:16px 0}h2{font-size:20px;line-height:28px;margin:24px 0 12px}p{margin:8px 0 16px;color:#475569}label{display:block;margin:16px 0 8px;font-weight:bold}input,select,textarea{font:16px/24px "Microsoft YaHei",Tahoma,sans-serif;color:#0f172a;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:8px;width:94%;max-width:800px}input{max-width:360px}button{font:16px/24px "Microsoft YaHei",Tahoma,sans-serif;font-weight:bold;min-height:48px;padding:12px;margin:8px 8px 8px 0;background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer}button.primary{background:#1d4ed8;color:#fff;border-color:#1d4ed8}button:disabled{color:#64748b;cursor:default}button:hover{border-color:#1d4ed8}button:focus,input:focus,select:focus,textarea:focus{outline:2px solid #2563eb}textarea{height:280px;resize:vertical}#status{min-height:48px;color:#0f172a;word-wrap:break-word}.hint{font-size:14px;line-height:20px}#count{margin:8px 0}.error{color:#b91c1c!important}.toolbar{margin:8px 0}a{color:#1d4ed8}
+</style></head><body><div id="page">
+<h1>局域网接收文字</h1><p>电脑和板子连接同一个路由器即可。电脑可使用网线，无需 USB 串口功能。</p>
+<label for="key">设备管理密码</label><input id="key" type="password" autocomplete="off" value="SonicC3-2026"><p class="hint">初始为 SonicC3-2026，修改过请填写新密码。这个页面不需要 API Token。</p>
+<div class="toolbar"><button id="connect" class="primary" type="button">开始接收</button><button id="disconnect" type="button" disabled="disabled">停止接收</button><button id="test" type="button" disabled="disabled">测试接收</button></div>
+<p id="status" role="status" aria-live="polite">点击开始接收后，在手机 App 中输入并发送文字。</p>
+<div id="count">本页已接收 0 条</div><label for="history">接收记录</label><select id="history" disabled="disabled"><option>尚无记录</option></select>
+<label for="text">收到的文字</label><textarea id="text" readonly="readonly"></textarea>
+<div class="toolbar"><button id="copy" type="button" disabled="disabled">复制文字</button><button id="select" type="button" disabled="disabled">全选文字</button><button id="clear" type="button" disabled="disabled">清空本页记录</button></div>
+<p class="hint">复制按钮不可用时，点击全选后按 Ctrl+C。最多保留最近 200 条；刷新或关闭页面会清除本页记录。</p>
+<h2>连接说明</h2><p class="hint">板子必须连接路由器 Wi-Fi，电脑与它之间能够互相访问。地址格式为 http://板子局域网IP/receive，也可以连接板子热点后打开 http://192.168.4.1/receive。</p>
+<p class="hint">USB 接收器、Chrome USB 接收页与局域网页面请择一连接。切换时先停止原接收端，必要时等待 8 秒。仅原文转发不需要互联网；模型处理需要板子联网。</p>
+<p><a href="/receiver.exe">下载免安装 USB 接收器 EXE</a> · <a href="/">设备配置</a></p>
+</div><script type="text/javascript">
+(function(){
+var active=false,timer=null,request=null,session=0,records=[],total=0;
+var client='web'+new Date().getTime().toString(36)+Math.floor(Math.random()*100000000).toString(36);
+function el(id){return document.getElementById(id);}
+function put(id,text){var node=el(id);while(node.firstChild)node.removeChild(node.firstChild);node.appendChild(document.createTextNode(String(text)));}
+function status(text,error){put('status',text);el('status').className=error?'error':'';}
+function parse(text){
+ if(window.JSON&&window.JSON.parse)return window.JSON.parse(text);
+ var pos=0,depth=0;
+ function ws(){while(pos<text.length&&/\s/.test(text.charAt(pos)))pos++;}
+ function string(){var result='',c,h,i;if(text.charAt(pos++)!=='"')throw new Error('JSON');while(pos<text.length){c=text.charAt(pos++);if(c==='"')return result;if(c==='\\'){c=text.charAt(pos++);if(c==='u'){h=text.substr(pos,4);if(!/^[0-9a-fA-F]{4}$/.test(h))throw new Error('JSON');result+=String.fromCharCode(parseInt(h,16));pos+=4;}else{var codes={'"':'"','\\':'\\','/':'/','b':'\b','f':'\f','n':'\n','r':'\r','t':'\t'};if(typeof codes[c]==='undefined')throw new Error('JSON');result+=codes[c];}}else{if(c.charCodeAt(0)<32)throw new Error('JSON');result+=c;}}throw new Error('JSON');}
+ function value(){ws();if(++depth>40)throw new Error('JSON');var c=text.charAt(pos),v,key,m;if(c==='"')v=string();else if(c==='{'){v={};pos++;ws();if(text.charAt(pos)!=='}'){while(true){ws();key=string();if(key==='__proto__'||key==='constructor'||key==='prototype')throw new Error('JSON');ws();if(text.charAt(pos++)!==':')throw new Error('JSON');v[key]=value();ws();c=text.charAt(pos++);if(c==='}')break;if(c!==',')throw new Error('JSON');}}else pos++;}else if(c==='['){v=[];pos++;ws();if(text.charAt(pos)!==']'){while(true){v.push(value());ws();c=text.charAt(pos++);if(c===']')break;if(c!==',')throw new Error('JSON');}}else pos++;}else if(text.substr(pos,4)==='true'){v=true;pos+=4;}else if(text.substr(pos,5)==='false'){v=false;pos+=5;}else if(text.substr(pos,4)==='null'){v=null;pos+=4;}else{m=/^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/.exec(text.substr(pos));if(!m)throw new Error('JSON');v=Number(m[0]);pos+=m[0].length;}depth--;return v;}
+ if(text.length>100000)throw new Error('JSON');var result=value();ws();if(pos!==text.length)throw new Error('JSON');return result;
+}
+function quoted(text){return '"'+String(text).replace(/["\\\x00-\x1f]/g,function(c){var n=c.charCodeAt(0).toString(16);return c==='"'?'\\"':c==='\\'?'\\\\':'\\u'+('0000'+n).slice(-4);})+'"';}
+function body(extra){return '{"client":'+quoted(client)+(extra||'')+'}';}
+function ajax(method,path,data,callback,tracked){
+ var xhr;try{xhr=window.XMLHttpRequest?new XMLHttpRequest():new ActiveXObject('Microsoft.XMLHTTP');xhr.open(method,path,true);xhr.setRequestHeader('X-Device-Key',el('key').value);xhr.setRequestHeader('Cache-Control','no-cache');if(method==='POST')xhr.setRequestHeader('Content-Type','application/json; charset=utf-8');}catch(e){callback(0,{error:'浏览器无法建立连接，请使用系统允许的浏览器。'});return;}
+ var done=false,timeout=setTimeout(function(){if(done)return;done=true;try{xhr.abort();}catch(ignore){}callback(0,{error:'连接超时，请检查设备网络。'});},12000);
+ xhr.onreadystatechange=function(){if(xhr.readyState!==4||done)return;done=true;clearTimeout(timeout);var code=0,result;try{code=xhr.status;result=parse(xhr.responseText);}catch(e){result={error:'设备返回格式异常，请稍后重试。'};}if(tracked&&request===xhr)request=null;callback(code,result);};
+ if(tracked)request=xhr;try{xhr.send(data||null);}catch(e){if(!done){done=true;clearTimeout(timeout);callback(0,{error:'连接失败，请检查网络。'});}}
+}
+function controls(){el('connect').disabled=active;el('disconnect').disabled=!active;el('test').disabled=!active;el('key').disabled=active;}
+function stop(release){active=false;session++;clearTimeout(timer);timer=null;if(request){try{request.abort();}catch(ignore){}request=null;}controls();if(release)ajax('POST','/api/receive/release',body(),function(){},false);}
+function later(token,delay){if(active&&token===session)timer=setTimeout(function(){poll(token);},delay);}
+function show(item){var i,known=false;for(i=0;i<records.length;i++)if(records[i].boot===item.boot&&records[i].id===item.id){known=true;break;}if(!known){if(records.length===0)el('history').options.length=0;if(records.length>=200){records.shift();el('history').remove(0);}records.push(item);el('history').options[el('history').options.length]=new Option('第 '+item.id+' 条 · '+new Date().toLocaleTimeString(),String(records.length-1));el('history').selectedIndex=records.length-1;total++;put('count','本页已接收 '+total+' 条');el('history').disabled=false;el('copy').disabled=false;el('select').disabled=false;el('clear').disabled=false;}el('text').value=item.text;}
+function poll(token){if(!active||token!==session)return;ajax('GET','/api/receive?client='+encodeURIComponent(client)+'&_='+new Date().getTime(),null,function(code,data){if(!active||token!==session)return;if(code===403||code===409){stop(false);status(data.error||'请检查管理密码或其他接收端连接。',true);return;}if(code!==200){status(data.error||'暂时无法连接，正在重试…',true);later(token,2000);return;}if(data.type==='text'&&typeof data.text==='string'&&typeof data.boot==='string'&&typeof data.id==='number'&&data.id>0&&Math.floor(data.id)===data.id){show(data);status('已收到第 '+data.id+' 条文字，可以复制或全选。',false);ajax('POST','/api/receive/ack',body(',"boot":'+quoted(data.boot)+',"id":'+data.id),function(ackCode,reply){if(!active||token!==session)return;if(ackCode!==200)status(reply.error||'文字已显示，正在重试接收确认。',true);later(token,750);},true);}else{status(data.busy?'模型正在处理，请稍候…':data.error||('已接收 '+total+' 条，等待手机发送下一条。'),!!data.error);later(token,750);}},true);}
+el('connect').onclick=function(){if(!el('key').value){status('请填写设备管理密码。',true);return;}active=true;session++;controls();status('正在连接板子…',false);poll(session);};
+el('disconnect').onclick=function(){stop(true);status('已停止接收，可切换到 USB 接收器。',false);};
+el('history').onchange=function(){var i=el('history').selectedIndex;if(i>=0&&i<records.length)el('text').value=records[i].text;};
+function selectText(){el('text').focus();el('text').select();}
+el('select').onclick=selectText;
+el('copy').onclick=function(){var text=el('text').value;try{if(window.clipboardData&&window.clipboardData.setData('Text',text)){status('已复制，可以粘贴到其他软件。',false);return;}}catch(ignore){}selectText();var ok=false;try{ok=document.execCommand('copy');}catch(ignore){}status(ok?'已复制，可以粘贴到其他软件。':'文字已全选，请按 Ctrl+C 复制。',false);};
+el('clear').onclick=function(){records=[];total=0;el('history').options.length=0;el('history').options[0]=new Option('尚无记录','');el('history').disabled=true;el('text').value='';el('copy').disabled=true;el('select').disabled=true;el('clear').disabled=true;put('count','本页已接收 0 条');};
+el('test').onclick=function(){var token=session;el('test').disabled=true;ajax('POST','/api/receive/test',body(),function(code,data){el('test').disabled=!active;if(token!==session)return;status(code===200?'本地测试文字已生成，等待接收。':data.error||'测试失败。',code!==200);},false);};
+window.onbeforeunload=function(){if(active)stop(true);};
+})();
+</script></body></html>
